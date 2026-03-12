@@ -11,11 +11,42 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+function check_dependencies {
+    echo -e "* Checking system dependencies..."
+
+    # Check PHP Version
+    if command -v php >/dev/null 2>&1; then
+        PHP_VERSION_CHECK=$(php -r "echo version_compare(PHP_VERSION, '8.2', '>=') ? 'OK' : 'FAIL';")
+        if [[ "$PHP_VERSION_CHECK" != "OK" ]]; then
+            echo -e "${RED}* PHP 8.2 or higher is required. Please follow the PHP Upgrade Guide [https://pterodactyl.io/guides/php_upgrade.html] and try again.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}* PHP is not installed. Please install PHP 8.2 or higher.${NC}"
+        exit 1
+    fi
+
+    # Check Composer Version
+    if command -v composer >/dev/null 2>&1; then
+        COMPOSER_VERSION=$(composer --version -n 2>/dev/null)
+        if [[ ! "$COMPOSER_VERSION" =~ Composer\ version\ 2\. ]]; then
+             echo -e "${RED}* Composer 2.x is required. Please upgrade Composer and try again.${NC}"
+             exit 1
+        fi
+    else
+        echo -e "${RED}* Composer is not installed. Please install Composer 2.x.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}* Dependencies check passed (PHP 8.2+, Composer 2.x).${NC}"
+}
+
 function main {
     if [[ $EUID -ne 0 ]]; then
        echo -e "${RED}* This script must be run as root.${NC}"
        exit 1
     fi
+    
+    check_dependencies
 
     if [ -d "$PANEL_PATH" ]; then
         echo -n "* Do you want to proceed with the update? (y/N): "
@@ -27,6 +58,22 @@ function main {
     else
         echo -e "${RED}* Pterodactyl directory not found at $PANEL_PATH${NC}"
         exit 1
+    fi
+}
+
+function check_panel_version {
+    if [ ! -d "$PANEL_PATH" ]; then
+        return
+    fi
+    
+    cd "$PANEL_PATH" || exit 1
+    echo -e "${GREEN}* Checking Pterodactyl Panel version...${NC}"
+    CURRENT_VERSION=$(php artisan p:info | grep "Panel Version" | awk '{print $3}')
+    LATEST_VERSION=$(php artisan p:info | grep "Latest Version" | awk '{print $3}')
+
+    if [[ "$CURRENT_VERSION" == "$LATEST_VERSION" ]] && [[ -n "$CURRENT_VERSION" ]]; then
+        echo -e "${GREEN}* Panel and Wings are already up-to-date (Version: $CURRENT_VERSION)${NC}"
+        exit 0
     fi
 }
 
@@ -66,7 +113,7 @@ function create_backup {
 
 function update_panel() {
     if [ -d "$PANEL_PATH" ]; then
-      echo -e "${GREEN}* Starting Panel Update...${NC}"
+      echo -e "${GREEN}* Starting Panel Update ($CURRENT_VERSION -> $LATEST_VERSION)...${NC}"
       cd "$PANEL_PATH"
       php artisan down
       sleep 5
@@ -101,6 +148,7 @@ function update_wings() {
 }
 
 main
+check_panel_version
 create_backup
 update_panel
 sleep 4
