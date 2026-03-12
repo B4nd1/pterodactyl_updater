@@ -31,6 +31,13 @@ function main {
 }
 
 function create_backup {
+    echo -n "* Do you want to create a backup? [Y/n]: "
+    read -r CONFIRM_BACKUP
+    if [[ "$CONFIRM_BACKUP" =~ ^[Nn]$ ]]; then
+        echo -e "* Skipping backup..."
+        return
+    fi
+
     echo -e "${GREEN}* Starting pre-update backup...${NC}"
 
     if [ -f "$PANEL_PATH/.env" ]; then
