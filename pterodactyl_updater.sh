@@ -56,7 +56,12 @@ function create_backup {
     fi
 
     echo -e "* Archiving panel files..."
-    tar -czf "files_$TIMESTAMP.tar.gz" -C "$PANEL_PATH" .
+    if tar -czf "files_$TIMESTAMP.tar.gz" -C "$PANEL_PATH" .; then
+        echo -e "${GREEN}* Panel files archived successfully.${NC}"
+    else
+        echo -e "${RED}* Panel files archiving failed!${NC}"
+        exit 1
+    fi
 }
 
 function update_panel() {
