@@ -42,9 +42,9 @@ function create_backup {
         if mysqldump "$DB_NAME" > "db_$TIMESTAMP.sql" 2>/dev/null; then
             echo -e "${GREEN}* Database backup successful.${NC}"
         else
-            echo -e "${RED}* Database backup failed! Checking alternative method...${NC}"
-            export $(grep -v '^#' "$PANEL_PATH/.env" | xargs)
-            mysqldump -u "$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" > "db_$TIMESTAMP.sql"
+            echo -e "${RED}* Database backup failed!${NC}"
+            exit 1
+            
         fi
     fi
 
@@ -54,33 +54,37 @@ function create_backup {
 
 function update_panel() {
     if [ -d "$PANEL_PATH" ]; then
+      echo -e "${GREEN}* Starting Panel Update...${NC}"
       cd "$PANEL_PATH"
-      curl -L $PANEL_UPDATE | tar -xzv
-      sleep 5
       php artisan down
+      sleep 5
+      curl -L $PANEL_UPDATE | tar -xzv
       chmod -R 755 storage/* bootstrap/cache
       composer install --no-dev --optimize-autoloader
       php artisan view:clear
       php artisan config:clear
       php artisan migrate --seed --force
+      # If using NGINX or Apache (not on CentOS)    
       chown -R www-data:www-data *
       php artisan queue:restart
       php artisan up
 
-      echo "Panel Updated"
+      echo -e "${GREEN}* Panel Updated Successfully.${NC}"
     fi
 }
 
 function update_wings() {
-    if [ -d "/usr/local/bin/" ]; then
-      echo "Updating Wings........"
-      sleep 5
+    if [ -f "/usr/local/bin/wings" ]; then
+      echo -e "${GREEN}* Updating Wings...${NC}"
       cd "/usr/local/bin/"
       systemctl stop wings
+      sleep 5
       curl -L -o /usr/local/bin/wings $WINGS_UPDATE
       chmod u+x /usr/local/bin/wings
       systemctl restart wings
-      echo "Wings Updated"
+      echo -e "${GREEN}* Wings Updated and Restarted.${NC}"
+    else
+        echo -e "${RED}* Wings binary not found in /usr/local/bin/, skipping.${NC}"
     fi
 }
 
