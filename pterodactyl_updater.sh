@@ -39,7 +39,7 @@ function create_backup {
         echo -e "* Exporting database: $DB_NAME using root privileges..."
 
         # MariaDB/MySQL will use the unix_socket to auth as the DB root.
-        if mysqldump "$DB_NAME" > "db_$TIMESTAMP.sql" 2>/dev/null; then
+        if mysqldump "$DB_NAME" > "db_$TIMESTAMP.sql"; then
             echo -e "${GREEN}* Database backup successful.${NC}"
         else
             echo -e "${RED}* Database backup failed!${NC}"
@@ -58,7 +58,7 @@ function update_panel() {
       cd "$PANEL_PATH"
       php artisan down
       sleep 5
-      curl -L $PANEL_UPDATE | tar -xzv
+      curl -L "$PANEL_UPDATE" | tar -xzv
       chmod -R 755 storage/* bootstrap/cache
       composer install --no-dev --optimize-autoloader
       php artisan view:clear
@@ -79,7 +79,7 @@ function update_wings() {
       cd "/usr/local/bin/"
       systemctl stop wings
       sleep 5
-      curl -L -o /usr/local/bin/wings $WINGS_UPDATE
+      curl -L -o /usr/local/bin/wings "$WINGS_UPDATE"
       chmod u+x /usr/local/bin/wings
       systemctl restart wings
       echo -e "${GREEN}* Wings Updated and Restarted.${NC}"
