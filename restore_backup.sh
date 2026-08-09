@@ -17,7 +17,12 @@ SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # 1. Find Backup Folders
 echo -e "${GREEN}* Scanning for backup folders...${NC}"
 shopt -s nullglob
-backup_dirs=("$SCRIPT_DIR"/pterodactyl_*)
+backup_dirs=()
+for d in "$SCRIPT_DIR"/pterodactyl_*; do
+    if [ -d "$d" ]; then
+        backup_dirs+=("$d")
+    fi
+done
 shopt -u nullglob
 
 if [ ${#backup_dirs[@]} -eq 0 ]; then
