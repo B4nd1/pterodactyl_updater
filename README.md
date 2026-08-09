@@ -1,7 +1,8 @@
 # pterodactyl_updater
 Script to easily update Pterodactyl Panel &amp; Wings
 
-It follows the official update steps from the documentation as of Feb 2026.
+It follows the official update steps from the documentation as of Aug 2026.
+Tested on Ubuntu 24.04 with nginx on Aug 2026
 
 [Panel manual upgrade](https://pterodactyl.io/panel/1.0/updating.html)
 
