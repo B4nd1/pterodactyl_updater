@@ -6,6 +6,7 @@ TIMESTAMP=$(date +%F_%H-%M-%S)
 PANEL_UPDATE="https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz"
 WINGS_UPDATE="https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_$([[ "$(uname -m)" == "x86_64" ]] && echo "amd64" || echo "arm64")"
 PANEL_PATH="/var/www/pterodactyl"
+WEBSERVER_USER="www-data"
 
 # Dynamically find the directory where this script is located
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
@@ -48,23 +49,35 @@ function main {
        exit 1
     fi
 
-    check_dependencies
+    HAS_PANEL=false
+    HAS_WINGS=false
 
     if [ -d "$PANEL_PATH" ]; then
-        echo -n "* Do you want to proceed with the update? (y/N): "
-        read -r CONFIRM_PROCEED
-        if [[ ! "$CONFIRM_PROCEED" =~ [Yy] ]]; then
-            echo -e "${RED}* Update aborted!${NC}"
-            exit 1
-        fi
-    else
-        echo -e "${RED}* Pterodactyl directory not found at $PANEL_PATH${NC}"
+        HAS_PANEL=true
+        check_dependencies
+    fi
+
+    if [ -f "/usr/local/bin/wings" ]; then
+        HAS_WINGS=true
+    fi
+
+    if [[ "$HAS_PANEL" == false ]] && [[ "$HAS_WINGS" == false ]]; then
+        echo -e "${RED}* Neither Pterodactyl Panel nor Wings were found on this system.${NC}"
+        exit 1
+    fi
+
+    echo -n "* Do you want to proceed with the update? (y/N): "
+    read -r CONFIRM_PROCEED
+    if [[ ! "$CONFIRM_PROCEED" =~ [Yy] ]]; then
+        echo -e "${RED}* Update aborted!${NC}"
         exit 1
     fi
 }
 
 function check_panel_version {
+    SKIP_PANEL_UPDATE=false
     if [ ! -d "$PANEL_PATH" ]; then
+        SKIP_PANEL_UPDATE=true
         return
     fi
 
@@ -74,12 +87,16 @@ function check_panel_version {
     LATEST_VERSION=$(php artisan p:info | grep "Latest Version" | awk '{print $3}')
 
     if [[ "$CURRENT_VERSION" == "$LATEST_VERSION" ]] && [[ -n "$CURRENT_VERSION" ]]; then
-        echo -e "${GREEN}* Panel and Wings are already up-to-date (Version: $CURRENT_VERSION)${NC}"
-        exit 0
+        echo -e "${GREEN}* Panel is already up-to-date (Version: $CURRENT_VERSION). Skipping Panel update.${NC}"
+        SKIP_PANEL_UPDATE=true
     fi
 }
 
 function create_backup {
+    if [[ "$SKIP_PANEL_UPDATE" == true ]]; then
+        return
+    fi
+
     echo -n "* Do you want to create a backup? [Y/n]: "
     read -r CONFIRM_BACKUP
     if [[ "$CONFIRM_BACKUP" =~ ^[Nn]$ ]]; then
@@ -118,6 +135,10 @@ function create_backup {
 }
 
 function update_panel() {
+    if [[ "$SKIP_PANEL_UPDATE" == true ]]; then
+        return
+    fi
+
     if [ -d "$PANEL_PATH" ]; then
       echo -e "${GREEN}* Starting Panel Update ($CURRENT_VERSION -> $LATEST_VERSION)...${NC}"
       cd "$PANEL_PATH"
@@ -129,7 +150,7 @@ function update_panel() {
       php artisan view:clear
       php artisan config:clear
       php artisan migrate --seed --force
-      chown -R www-data:www-data *
+      chown -R "$WEBSERVER_USER":"$WEBSERVER_USER" *
       php artisan queue:restart
       php artisan up
 
